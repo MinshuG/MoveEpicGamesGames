@@ -1,0 +1,140 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MoveEpicGamesGames.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:fa="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="MoveEpicGamesGames.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="MoveEpicGamesGames"
+        Width="500" Height="500"
+        MinWidth="450" MinHeight="450"
+        MaxWidth="500" MaxHeight="500"
+        WindowStartupLocation="CenterScreen"
+        SizeToContent="WidthAndHeight"
+        Background="{x:Null}"
+        TransparencyLevelHint="Mica"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="Default"
+        >
+
+    <Design.DataContext>
+        <!-- This only sets the DataContext for the previewer in an IDE,
+             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <Panel>
+        <!-- Title Bar -->
+        <!-- <ExperimentalAcrylicBorder IsHitTestVisible="False"> -->
+        <!--     <ExperimentalAcrylicBorder.Material> -->
+        <!--         <ExperimentalAcrylicMaterial -->
+        <!--             BackgroundSource="Digger" -->
+        <!--             TintColor="Black" -->
+        <!--             TintOpacity="1" -->
+        <!--             MaterialOpacity="0.65" /> -->
+        <!--     </ExperimentalAcrylicBorder.Material> -->
+        <!-- </ExperimentalAcrylicBorder> -->
+
+        <Panel Margin="30,35,30,8">
+            <DockPanel>
+                <!-- App Title -->
+                <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,20">
+                    <TextBlock Text="Epic Games Manager"
+                             Theme="{DynamicResource TitleTextBlockStyle}"
+                             FontSize="28"
+                             FontWeight="SemiBold"/>
+                    <TextBlock Text="Move, backup and restore your Epic Games"
+                             Theme="{DynamicResource BodyTextBlockStyle}"
+                             Opacity="0.75"/>
+                </StackPanel>
+
+                <!-- Main Content -->
+                <ScrollViewer >
+                    <StackPanel Spacing="16" Margin="20" MaxWidth="500">
+                        <!-- Warning Message -->
+                        <TextBlock Text="No games installed!"
+                                  Theme="{DynamicResource SubtitleTextBlockStyle}"
+                                  Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                                  IsVisible="{Binding HasNoGames}"
+                                  HorizontalAlignment="Center"/>
+
+                        <!-- Game Selection -->
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Game" Theme="{DynamicResource BaseTextBlockStyle}"/>
+                            <ComboBox HorizontalAlignment="Stretch" PlaceholderText="Select Game"
+                                      ItemsSource="{Binding AvailableGames}"
+                                      SelectedItem="{Binding SelectedGame}"
+                                      SelectedIndex="0"
+                                      IsEnabled="{Binding !HasNoGames}"/>
+                        </StackPanel>
+
+                        <!-- Destination Selection -->
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Destination"/>
+                            <Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto,Auto">
+                                <TextBox Text="{Binding DestinationFolder}"
+                                          TextWrapping="Wrap"
+                                          Opacity="0.8"
+                                          Focusable="False"
+                                          Margin="0 0 8 0"
+                                          Grid.Row="0"/>
+                                <Button Grid.Row="0" Grid.Column="1"
+                                                    Command="{Binding PickFolderCommand}"
+                                                    IsEnabled="{Binding !HasNoGames}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <fa:SymbolIcon Symbol="Folder"/>
+                                        <TextBlock Text="Browse"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Action Button -->
+                        <Button HorizontalAlignment="Stretch"
+                                Command="{Binding MoveSelectedGameCommand}"
+                                IsEnabled="{Binding CanMove}"
+                                Classes="accent">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <fa:SymbolIcon Symbol="Forward"/>
+                                <TextBlock Text="Move Game"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Backup Button -->
+                        <Button HorizontalAlignment="Stretch"
+                                Command="{Binding BackupSelectedGameCommand}"
+                                IsEnabled="{Binding SelectedGame, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                Classes="accent">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <fa:SymbolIcon Symbol="Save"/>
+                                <TextBlock Text="Backup Game"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Restore Backup Button -->
+                        <Button HorizontalAlignment="Stretch"
+                                Command="{Binding RestoreBackupCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <fa:SymbolIcon Symbol="Download"/>
+                                <TextBlock Text="Restore Backup"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Progress and Status -->
+                        <StackPanel IsVisible="{Binding IsBusy}"
+                                   HorizontalAlignment="Center"
+                                   Spacing="8">
+                            <ProgressBar IsIndeterminate="True" 
+                                        Width="200"/>
+                            <TextBlock Text="Moving game..."
+                                      HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+        </Panel>
+    </Panel>
+</Window>
