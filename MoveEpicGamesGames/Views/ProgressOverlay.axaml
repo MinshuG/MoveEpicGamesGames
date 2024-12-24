@@ -1,0 +1,33 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MoveEpicGamesGames.ViewModels"
+             x:Class="MoveEpicGamesGames.Views.ProgressOverlay"
+             x:DataType="vm:MainWindowViewModel">
+    <Panel>
+        <Panel Background="Black" Opacity="0.7"/>
+        <Border Background="{DynamicResource SystemAcrylicWindowBrush}"
+                BorderBrush="{DynamicResource SystemBaseLowColor}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Width="300"
+                Height="150"
+                BoxShadow="0 8 16 0 #66000000">
+            <StackPanel VerticalAlignment="Center" Spacing="16" Margin="20">
+                <ProgressBar Value="{Binding ProgressValue}"
+                           IsIndeterminate="{Binding ProgressValue, Converter={x:Static ObjectConverters.IsNull}}"
+                           Height="4"
+                           Minimum="0"
+                           Maximum="1"/>
+                <StackPanel Spacing="4">
+                    <TextBlock Text="{Binding ProgressValue, StringFormat='{}{0:P0}'}"
+                             TextAlignment="Center"
+                             FontSize="16"/>
+                    <TextBlock Text="{Binding ProgressText}"
+                             TextAlignment="Center"
+                             TextWrapping="Wrap"
+                             Opacity="0.8"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Panel>
+</UserControl>
