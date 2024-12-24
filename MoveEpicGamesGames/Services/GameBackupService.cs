@@ -75,7 +75,7 @@ namespace MoveEpicGamesGames.Services
         
             // Extract and update manifest
             manifestEntry.ExtractToFile(manifestDestPath, true);
-            var manifest = JsonConvert.DeserializeObject<GameManifest>(File.ReadAllText(manifestDestPath));
+            var manifest = JsonConvert.DeserializeObject<GameManifest>(await File.ReadAllTextAsync(manifestDestPath));
             return manifest;
         }
         
@@ -98,16 +98,35 @@ namespace MoveEpicGamesGames.Services
             // First read the LauncherInstalled.json to get game info
             var launcherEntry = archive.GetEntry("LauncherInstalled.json");
             if (launcherEntry == null) throw new Exception("Invalid backup: Missing LauncherInstalled.json");
-        
+            
             using var reader = new StreamReader(launcherEntry.Open());
             var gameInfo = JsonConvert.DeserializeObject<dynamic>(await reader.ReadToEndAsync());
             string appName = gameInfo["AppName"].ToString();
+
+            string gameInstallPath = Path.Combine(restorePath, Path.GetFileName(gameInfo["InstallLocation"].ToString()));
+
+            #region LauncherInstalled
+            // Update LauncherInstalled.dat
+            string launcherPath = @"C:\ProgramData\Epic\UnrealEngineLauncher\LauncherInstalled.dat";
+            File.Copy(launcherPath, launcherPath + ".bak", true);
+        
+            var launcherData = JObject.Parse(await File.ReadAllTextAsync(launcherPath));
+            var installationList = launcherData["InstallationList"] as JArray;
+
+            foreach (var entry in installationList!)
+            {
+                if (entry["AppName"]?.ToString() == appName)
+                {
+                    entry["InstallLocation"] = gameInstallPath;
+                    throw new Exception("Game already installed. Uninstall it first.");
+                }
+            }
+            #endregion
 
             progress?.Report(("Extracting game files...", 0.05));
 
             // Extract game files
             var gameFiles = archive.Entries.Where(e => e.FullName.StartsWith("GameFiles\\"));
-            string gameInstallPath = Path.Combine(restorePath, Path.GetFileName(gameInfo["InstallLocation"].ToString()));
 
             foreach (var entry in gameFiles)
             {
@@ -148,28 +167,9 @@ namespace MoveEpicGamesGames.Services
             await File.WriteAllTextAsync(manifestDestPath, JsonConvert.SerializeObject(manifest, Formatting.Indented));
             #endregion
 
-            // Update LauncherInstalled.dat
-            string launcherPath = @"C:\ProgramData\Epic\UnrealEngineLauncher\LauncherInstalled.dat";
-            File.Copy(launcherPath, launcherPath + ".bak", true);
-        
-            var launcherData = JObject.Parse(await File.ReadAllTextAsync(launcherPath));
-            var installationList = launcherData["InstallationList"] as JArray;
+            // add game to LauncherInstalled.dat
             
-            bool found = false;
-            foreach (var entry in installationList!)
-            {
-                if (entry["AppName"]?.ToString() == appName)
-                {
-                    entry["InstallLocation"] = gameInstallPath;
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!found)
-            {
-                installationList!.Add(JObject.FromObject(gameInfo));
-            }
+            installationList!.Add(JObject.FromObject(gameInfo));
 
             await File.WriteAllTextAsync(launcherPath, launcherData.ToString(Formatting.Indented));
 

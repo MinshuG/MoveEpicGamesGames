@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using FluentAvalonia.UI.Controls;
 using Newtonsoft.Json;
@@ -67,8 +65,6 @@ namespace MoveEpicGamesGames.ViewModels
                 var data = JsonConvert.DeserializeObject<dynamic>(await file.ReadToEndAsync());
                 var list = data["InstallationList"];
                 var entries = new List<string>();
-
-                // ...existing code...
 
                 string manifestsPath = @"C:\ProgramData\Epic\EpicGamesLauncher\Data\Manifests";
                 foreach (var manifestFile in Directory.GetFiles(manifestsPath, "*.item"))
@@ -140,7 +136,6 @@ namespace MoveEpicGamesGames.ViewModels
             }
 
             // Check DLC and other validations...
-            // ...existing validation code...
 
             var dialog = new ContentDialog
             {
@@ -153,7 +148,6 @@ namespace MoveEpicGamesGames.ViewModels
             var result = await dialog.ShowAsync();
             if (result != ContentDialogResult.Primary) return;
 
-            string? error = null;
             try
             {
                 await ShowProgressOverlay(async progress =>
@@ -167,7 +161,7 @@ namespace MoveEpicGamesGames.ViewModels
             }
             catch (Exception ex)
             {
-                error = ex.Message;
+                var error = ex.Message;
                 await ShowError("Error", $"Failed to move or update: {error}");
             }
         }
@@ -318,7 +312,7 @@ namespace MoveEpicGamesGames.ViewModels
             {
                 AllowMultiple = false
             });
-            if (folderPicker == null || folderPicker.Count == 0) return;
+            if (folderPicker.Count == 0) return;
 
             var restoreLocation = folderPicker[0].Path.LocalPath;
             
