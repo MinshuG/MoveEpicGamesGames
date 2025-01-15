@@ -3,6 +3,7 @@
   <component name="AvaloniaProject">
     <option name="projectPerEditor">
       <map>
+        <entry key="MoveEpicGamesGames/App.axaml" value="MoveEpicGamesGames/MoveEpicGamesGames.csproj" />
         <entry key="MoveEpicGamesGames/Views/ArchiveExplorerWindow.axaml" value="MoveEpicGamesGames/MoveEpicGamesGames.csproj" />
         <entry key="MoveEpicGamesGames/Views/MainWindow.axaml" value="MoveEpicGamesGames/MoveEpicGamesGames.csproj" />
         <entry key="MoveEpicGamesGames/Views/ProgressOverlay.axaml" value="MoveEpicGamesGames/MoveEpicGamesGames.csproj" />

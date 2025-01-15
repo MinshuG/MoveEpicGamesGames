@@ -3,7 +3,7 @@
 Epic Games Manager is designed to help you manage your EGL Games because it can't. With this tool, you can easily move, backup, and restore your games.
 
 <!-- screenshots here -->
-![Screenshot](/screenshot.png)
+<img src="screenshot.png" width="400"/>
 
 ## Features
 
@@ -20,7 +20,6 @@ Epic Games Manager is designed to help you manage your EGL Games because it can'
 - **Restore Backups**: Easily restore game backups.
   - Choose custom restore location.
   - Automatic Epic Games Launcher integration.
-  - Verify backup integrity during restoration.
 
 ## Requirements
 
@@ -78,6 +77,7 @@ Epic Games Manager is designed to help you manage your EGL Games because it can'
 ## TODOs
 - Add support for LZ4 compression.
 - Add support for DLCs
+- Verify backup integrity during restoration.
 
 
 ## Important Notes
