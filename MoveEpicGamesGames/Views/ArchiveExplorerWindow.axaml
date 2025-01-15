@@ -1,0 +1,49 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MoveEpicGamesGames.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:fa="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="MoveEpicGamesGames.Views.ArchiveExplorerWindow"
+        x:DataType="vm:ArchiveExplorerViewModel"
+        Title="Archive Explorer"
+        Width="800" Height="500"
+        WindowStartupLocation="CenterOwner">
+    
+    <DockPanel Margin="20">
+        <StackPanel DockPanel.Dock="Top" Spacing="10" Margin="0,0,0,20">
+            <Button Command="{Binding OpenArchiveCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <fa:SymbolIcon Symbol="OpenFile"/>
+                    <TextBlock Text="Open Archive"/>
+                </StackPanel>
+            </Button>
+            <TextBlock Text="{Binding ArchivePath}" Opacity="0.7"/>
+            <Button Content="Extract To" Command="{Binding ExtractCommand}"/>
+        </StackPanel>
+
+        <DataGrid ItemsSource="{Binding Entries}"
+                  IsReadOnly="True"
+                  CanUserResizeColumns="True"
+                  CanUserSortColumns="True"
+                  GridLinesVisibility="All">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Path"
+                                  Binding="{Binding FullPath}"
+                                  Width="*"/>
+                <DataGridTextColumn Header="Size" Binding="{Binding SizeDisplay}"></DataGridTextColumn>
+                <!-- <DataGridTemplateColumn Header="Actions" Width="100"> -->
+                <!--     <DataGridTemplateColumn.CellTemplate> -->
+                <!--         <DataTemplate> -->
+                <!--             ~1~ <Button Command="{Binding DataContext.ExtractEntryCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}" @1@ -->
+                <!--             ~1~         CommandParameter="{Binding Path}"> @1@ -->
+                <!--             ~1~     <fa:SymbolIcon Symbol="Save"/> @1@ -->
+                <!--             ~1~ </Button> @1@ -->
+                <!--         </DataTemplate> -->
+                <!--     </DataGridTemplateColumn.CellTemplate> -->
+                <!-- </DataGridTemplateColumn> -->
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+</Window>

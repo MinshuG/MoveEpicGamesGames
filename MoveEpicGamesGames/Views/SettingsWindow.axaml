@@ -1,0 +1,43 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:MoveEpicGamesGames.ViewModels"
+        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+        xmlns:models="clr-namespace:MoveEpicGamesGames.Models"
+        xmlns:convertors="clr-namespace:MoveEpicGamesGames.ViewModels.Converters"
+        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="250"
+        x:Class="MoveEpicGamesGames.Views.SettingsWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Settings"
+        Width="400" Height="250"
+        WindowStartupLocation="CenterOwner"
+        Background="{x:Null}"
+        TransparencyLevelHint="Mica"
+        ExtendClientAreaToDecorationsHint="True"
+        >
+
+    <Window.Resources>
+        <convertors:EnumConverter x:Key="EnumConverter"/>
+    </Window.Resources>
+    
+    <StackPanel Margin="20" Spacing="16">
+        <TextBlock Text="Settings"
+                   Theme="{DynamicResource TitleTextBlockStyle}"/>
+
+        <StackPanel Spacing="8">
+            <TextBlock Text="Compression Method" Theme="{DynamicResource BaseTextBlockStyle}"/>
+            <ComboBox HorizontalAlignment="Stretch"
+                      ItemsSource="{convertors:EnumToItemsSource {x:Type models:CompressionMethod}}"
+                      SelectedItem="{Binding SelectedCompression, Converter={StaticResource EnumConverter}}"/>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" 
+                    HorizontalAlignment="Right" 
+                    Spacing="8"
+                    Margin="0,20,0,0">
+            <Button Content="Close" 
+                    Click="CloseButton_OnClick"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

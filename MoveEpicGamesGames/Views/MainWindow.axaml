@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:fa="clr-namespace:FluentAvalonia.UI.Controls;assembly=FluentAvalonia"
         xmlns:views="clr-namespace:MoveEpicGamesGames.Views"
+        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="MoveEpicGamesGames.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
@@ -43,14 +44,24 @@
         <Panel Margin="30,35,30,8">
             <DockPanel>
                 <!-- App Title -->
-                <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,20">
-                    <TextBlock Text="Epic Games Manager"
-                             Theme="{DynamicResource TitleTextBlockStyle}"
-                             FontSize="28"
-                             FontWeight="SemiBold"/>
-                    <TextBlock Text="Move, backup and restore your Epic Games"
-                             Theme="{DynamicResource BodyTextBlockStyle}"
-                             Opacity="0.75"/>
+                <StackPanel DockPanel.Dock="Top" 
+                            Orientation="Horizontal" 
+                            Spacing="4" 
+                            Margin="0,0,0,20">
+                    <StackPanel>
+                        <TextBlock Text="Epic Games Manager"
+                                 Theme="{DynamicResource TitleTextBlockStyle}"
+                                 FontSize="28"
+                                 FontWeight="SemiBold"/>
+                        <TextBlock Text="Move, backup and restore your Epic Games"
+                                 Theme="{DynamicResource BodyTextBlockStyle}"
+                                 Opacity="0.75"/>
+                    </StackPanel>
+                    <Button Command="{Binding ShowSettingsCommand}"
+                            VerticalAlignment="Top"
+                            Margin="8,0,0,0">
+                        <fa:SymbolIcon Symbol="Settings"/>
+                    </Button>
                 </StackPanel>
 
                 <!-- Main Content -->
@@ -114,16 +125,18 @@
                             </StackPanel>
                         </Button>
 
-                        <!-- Backup Button -->
-                        <Button HorizontalAlignment="Stretch"
-                                Command="{Binding BackupSelectedGameCommand}"
-                                IsEnabled="{Binding SelectedGame, Converter={x:Static ObjectConverters.IsNotNull}}"
-                                Classes="accent">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <fa:SymbolIcon Symbol="Save"/>
-                                <TextBlock Text="Backup Game"/>
-                            </StackPanel>
-                        </Button>
+                        <!-- Backup Section -->
+                        <StackPanel Spacing="8">
+                            <Button HorizontalAlignment="Stretch"
+                                    Command="{Binding BackupSelectedGameCommand}"
+                                    IsEnabled="{Binding SelectedGame, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                    Classes="accent">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <fa:SymbolIcon Symbol="Save"/>
+                                    <TextBlock Text="Backup Game"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
 
                         <!-- Restore Backup Button -->
                         <Button HorizontalAlignment="Stretch"
@@ -169,6 +182,10 @@
                         Command="{Binding DebugToggleIsBusyCommand}"
                         HorizontalAlignment="Stretch"
                         Margin="0,10,0,0"/>
+                <Button Content="Archive Explorer"
+                        Command="{Binding ShowArchiveExplorerCommand}"
+                        HorizontalAlignment="Stretch"
+                        Margin="0,4,0,0"/>
                 <TextBlock Text="{Binding IsBusy, StringFormat='IsBusy: {0}'}"
                           Margin="0,5,0,0"/>
             </StackPanel>

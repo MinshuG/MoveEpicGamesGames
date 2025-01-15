@@ -11,6 +11,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MoveEpicGamesGames.Services;
 using MoveEpicGamesGames.Utils;
+using MoveEpicGamesGames.Views;
 
 namespace MoveEpicGamesGames.ViewModels
 {
@@ -26,7 +27,7 @@ namespace MoveEpicGamesGames.ViewModels
         [NotifyPropertyChangedFor(nameof(CanMove))]
         [ObservableProperty]
         private string? _destinationFolder;
-        
+
         [ObservableProperty]
         private bool _isBusy;
 
@@ -45,12 +46,15 @@ namespace MoveEpicGamesGames.ViewModels
         [ObservableProperty]
         private bool _showDebug;
 
+        [ObservableProperty]
+        private CompressionMethod _selectedCompression = CompressionMethod.Zip;
+
         public bool CanMove => !string.IsNullOrEmpty(_selectedGame) && !string.IsNullOrEmpty(_destinationFolder);
 
         private List<GameManifest> _manifests = new();
         private Dictionary<string, string> _appNameToManifestPath = new();
 
-    
+
         public MainWindowViewModel()
         {
             LoadGameEntries();
@@ -228,13 +232,22 @@ namespace MoveEpicGamesGames.ViewModels
             var manifest = FindManifest(_selectedGame);
             if (manifest == null) return;
 
+            #if !DEBUG
+            _selectedCompression = CompressionMethod.Zip; // Default to Zip for now
+            #endif
+
+            var compressionService = CompressionFactory.GetService(_selectedCompression);
             var file = await AppHelper.TopLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
             {
-                DefaultExtension = "epiczip",
+                DefaultExtension = compressionService.FileExtension.TrimStart('.'),
                 FileTypeChoices = new List<FilePickerFileType>
                 {
-                    new FilePickerFileType("Epic Games Backup Zip Archive") { Patterns = new[] { "*.epiczip" } }
-                }
+                    new FilePickerFileType("Epic Games Backup Archive") 
+                    { 
+                        Patterns = new[] { $"*{compressionService.FileExtension}" } 
+                    }
+                },
+                SuggestedFileName = $"{manifest.DisplayName} Backup"
             });
 
             if (file == null) return;
@@ -290,11 +303,11 @@ namespace MoveEpicGamesGames.ViewModels
                 AllowMultiple = false,
                 FileTypeFilter = new List<FilePickerFileType>
                 {
-                    new FilePickerFileType("Epic Games Backup Zip Archive") { Patterns = new[] { "*.epiczip" } }
+                    new FilePickerFileType("Epic Games Backup Archive") { Patterns = new[] { "*.epiczip", "*.epiclz4" } }
                 }
             });
 
-            if (file == null || file.Count == 0) return;
+            if (file.Count == 0) return;
 
             string archivePath = file[0].Path.LocalPath;
             var dialog = new ContentDialog
@@ -327,7 +340,7 @@ namespace MoveEpicGamesGames.ViewModels
             }
             catch (Exception ex)
             {
-                await ShowError("Error", $"Failed to restore backup: {ex.Message}");
+                await ShowError("Failed to restore backup", $"\n{ex.Message}");
             }
         }
 
@@ -428,6 +441,37 @@ namespace MoveEpicGamesGames.ViewModels
         private bool IsSubdir(string baseDir, string path)
         {
             return Path.GetFullPath(path).StartsWith(Path.GetFullPath(baseDir), StringComparison.OrdinalIgnoreCase);
+        }
+
+        [RelayCommand]
+        private async Task ShowSettings()
+        {
+            SettingsWindow settingsWindow = new();
+            settingsWindow.DataContext = this;
+
+            if (AppHelper.MainWindow != null)
+            {
+                await settingsWindow.ShowDialog(AppHelper.MainWindow);
+            }
+        }
+        
+        [RelayCommand]
+        private async Task ShowArchiveExplorer()
+        {
+            var vm = new ArchiveExplorerViewModel();
+            var window = new ArchiveExplorerWindow
+            {
+                DataContext = vm
+            };
+    
+            try
+            {
+                await window.ShowDialog(AppHelper.MainWindow);
+            }
+            finally
+            {
+                vm.Dispose();
+            }
         }
     }
 }

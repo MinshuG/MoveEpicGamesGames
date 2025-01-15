@@ -1,13 +1,15 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using MoveEpicGamesGames.Models;
+using MoveEpicGamesGames.Services.Compression;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using ZipArchive = MoveEpicGamesGames.Services.Compression.ZipArchive;
 
 namespace MoveEpicGamesGames.Services
 {
@@ -25,19 +27,33 @@ namespace MoveEpicGamesGames.Services
                 progress?.Report((operation, (double)currentSize / totalSize));
             }
 
-            using var zipArchive = ZipFile.Open(zipFilePath, ZipArchiveMode.Create);
+            IArchive archive;
+            if (zipFilePath.EndsWith(".epiczip"))
+            {
+                archive = new ZipArchive(zipFilePath, ArchiveOpenMode.Compress);
+            }
+            else if (zipFilePath.EndsWith(".epiclz4"))
+            {
+                archive = new Lz4Archive(zipFilePath, ArchiveOpenMode.Compress);
+            }
+            else
+            {
+                throw new Exception("Invalid backup file format");
+            }
+            
+            
             progress?.Report(("Preparing backup...", 0));
             // Add game files
-            AddDirectoryToZip(zipArchive, manifest.InstallLocation, "GameFiles", ReportProgress);
+            AddDirectoryToAr(archive, manifest.InstallLocation, "GameFiles", ReportProgress);
 
             // Add manifest files
             // only include if manifest location is not subdirectory of install location
             // which is the case for most games
-            if (!manifest.ManifestLocation.StartsWith(manifest.InstallLocation))
-                AddDirectoryToZip(zipArchive, manifest.ManifestLocation, "Manifests");
+            if (!manifest.ManifestLocation.Replace("/", "\\").StartsWith(manifest.InstallLocation))
+                AddDirectoryToAr(archive, manifest.ManifestLocation, "Manifests");
 
-            if (!manifest.StagingLocation.StartsWith(manifest.InstallLocation))
-                AddFileToZip(zipArchive, manifest.StagingLocation, "Manifests");
+            if (!manifest.StagingLocation.Replace("/", "\\").StartsWith(manifest.InstallLocation))
+                AddDirectoryToAr(archive, manifest.StagingLocation, "Manifests");
 
             // Add LauncherInstalled entry
             var launcherInstalledPath = @"C:\ProgramData\Epic\UnrealEngineLauncher\LauncherInstalled.dat";
@@ -47,14 +63,15 @@ namespace MoveEpicGamesGames.Services
             var gameEntry = installationList.FirstOrDefault(entry => entry["AppName"] == manifest.AppName);
             if (gameEntry != null)
             {
-                var entry = zipArchive.CreateEntry("LauncherInstalled.json");
-                await using var entryStream = entry.Open();
-                await using var writer = new StreamWriter(entryStream);
-                await writer.WriteAsync(JsonConvert.SerializeObject(gameEntry, Formatting.Indented));
+                var stream = new MemoryStream();
+                stream.Write(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(gameEntry, Formatting.Indented)));
+                stream.Position = 0;
+                archive.AddEntry("LauncherInstalled.json", stream);
             }
-                
+
             // add manifest.FilePath 
-            AddFileToZip(zipArchive, manifest.FilePath, new FileInfo(manifest.FilePath).Name);
+            AddFileToAr(archive, manifest.FilePath, new FileInfo(manifest.FilePath).Name);
+            archive.Dispose();
         }
 
         public static async Task<GameManifest> GetManifestFromZip(string zipFilePath)
@@ -81,16 +98,32 @@ namespace MoveEpicGamesGames.Services
         
         public static async Task RestoreBackupAsync(string zipFilePath, string restorePath, IProgress<(string Operation, double Progress)>? progress = null)
         {
-            using var archive = ZipFile.OpenRead(zipFilePath);
-        
+            if (!Directory.Exists(restorePath)) Directory.CreateDirectory(restorePath);
+
+            ICompressionService compressionService;
+            if (zipFilePath.EndsWith(".epiczip"))
+            {
+                compressionService = new ZipCompressionService();
+            }
+            else if (zipFilePath.EndsWith(".epiclz4"))
+            {
+                compressionService = new Lz4CompressionService();
+            }
+            else
+            {
+                throw new Exception("Invalid backup file format");
+            }
+            
+            var archive = compressionService.OpenArchive(zipFilePath, ArchiveOpenMode.Decompress);
+            
             // Get total size for progress calculation
-            var totalSize = archive.Entries.Sum(e => e.Length);
+            var totalSize = archive.GetTotalExtractedSize();
             long currentSize = 0;
 
             void ReportProgress(string operation, long bytes)
             {
                 currentSize += bytes;
-                progress?.Report((operation, (double)currentSize / totalSize));
+                progress?.Report((operation, ((double)currentSize / totalSize) * 0.95f));
             }
 
             progress?.Report(("Reading backup info...", 0));
@@ -98,12 +131,17 @@ namespace MoveEpicGamesGames.Services
             // First read the LauncherInstalled.json to get game info
             var launcherEntry = archive.GetEntry("LauncherInstalled.json");
             if (launcherEntry == null) throw new Exception("Invalid backup: Missing LauncherInstalled.json");
-            
-            using var reader = new StreamReader(launcherEntry.Open());
+
+            var temp = new MemoryStream();
+            await launcherEntry.CopyToAsync(temp);
+            temp.Position = 0;
+            using var reader = new StreamReader(temp);
             var gameInfo = JsonConvert.DeserializeObject<dynamic>(await reader.ReadToEndAsync());
             string appName = gameInfo["AppName"].ToString();
 
             string gameInstallPath = Path.Combine(restorePath, Path.GetFileName(gameInfo["InstallLocation"].ToString()));
+            
+            gameInfo["InstallLocation"] = gameInstallPath; // update install location to new path
 
             #region LauncherInstalled
             // Update LauncherInstalled.dat
@@ -117,53 +155,54 @@ namespace MoveEpicGamesGames.Services
             {
                 if (entry["AppName"]?.ToString() == appName)
                 {
-                    entry["InstallLocation"] = gameInstallPath;
+                    // entry["InstallLocation"] = gameInstallPath; // change install location??
                     throw new Exception("Game already installed. Uninstall it first.");
                 }
             }
+            
             #endregion
 
             progress?.Report(("Extracting game files...", 0.05));
 
             // Extract game files
-            var gameFiles = archive.Entries.Where(e => e.FullName.StartsWith("GameFiles\\"));
+            var gameFiles = archive.Entries.Where(e => e.StartsWith("GameFiles\\"));
 
             foreach (var entry in gameFiles)
             {
-                string relativePath = entry.FullName.Substring("GameFiles/".Length);
+                string relativePath = entry.Substring("GameFiles/".Length);
                 string destinationPath = Path.Combine(gameInstallPath, relativePath);
             
-                if (entry.FullName.EndsWith("/"))
+                if (entry.EndsWith("/"))
                 {
                     Directory.CreateDirectory(destinationPath);
                     continue;
                 }
             
                 Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
-                await ExtractEntryWithProgress(entry, destinationPath, 
-                    (op, bytes) => ReportProgress($"Extracting: {Path.GetFileName(destinationPath)}", entry.Length));
+                await ExtractEntryWithProgress(archive, entry, destinationPath, 
+                    (op, bytes) => ReportProgress($"Extracting: {op}", bytes));
             }
 
             progress?.Report(("Updating manifests...", 0.95));
 
             # region .item file
             // Extract and update manifest file
-            var manifestEntry = archive.Entries.FirstOrDefault(e => e.Name.EndsWith(".item"));
+            var manifestEntry = archive.Entries.FirstOrDefault(e => e.EndsWith(".item"));
             if (manifestEntry == null) throw new Exception("Invalid backup: Missing manifest file");
         
             string manifestsPath = @"C:\ProgramData\Epic\EpicGamesLauncher\Data\Manifests";
-            string manifestDestPath = Path.Combine(manifestsPath, manifestEntry.Name);
+            string manifestDestPath = Path.Combine(manifestsPath, manifestEntry);
         
             // Backup existing manifest if it exists
             if (File.Exists(manifestDestPath)) // already installed game?
             {
-                File.Copy(manifestDestPath, manifestDestPath + ".bak", true);
+                File.Move(manifestDestPath, manifestDestPath + ".bak", true);
             }
         
             // Extract and update manifest
-            manifestEntry.ExtractToFile(manifestDestPath, true);
-            var manifest = JsonConvert.DeserializeObject<dynamic>(File.ReadAllText(manifestDestPath));
-            manifest["InstallLocation"] = gameInstallPath;
+            archive.ExtractToFile(manifestEntry, manifestDestPath);
+            var manifest = JsonConvert.DeserializeObject<dynamic>(await File.ReadAllTextAsync(manifestDestPath));
+            manifest!["InstallLocation"] = gameInstallPath;
             await File.WriteAllTextAsync(manifestDestPath, JsonConvert.SerializeObject(manifest, Formatting.Indented));
             #endregion
 
@@ -176,42 +215,50 @@ namespace MoveEpicGamesGames.Services
             progress?.Report(("Restore complete", 1.0));
         }
 
-        private static async Task ExtractEntryWithProgress(ZipArchiveEntry entry, string destinationPath, Action<string, long> reportProgress)
+        private static async Task ExtractEntryWithProgress(IArchive archive, string entry, string destinationPath, Action<string, long> reportProgress)
         {
-            using var entryStream = entry.Open();
+            // TODO: chunked extraction for better progress reporting
+            using var entryStream = archive.GetEntry(entry);
             using var fileStream = File.Create(destinationPath);
-            await entryStream.CopyToAsync(fileStream);
-            reportProgress($"Extracting: {Path.GetFileName(destinationPath)}", entry.Length);
+            await entryStream!.CopyToAsync(fileStream);
+            reportProgress($"Extracting: {Path.GetFileName(destinationPath)}", fileStream.Length);
         }
 
-        private static void AddDirectoryToZip(ZipArchive zipArchive, string sourceDir, string entryName, Action<string, long>? progressCallback = null)
+        private static void AddDirectoryToAr(IArchive archive, string sourceDir, string entryPrefix, Action<string, long>? progressCallback = null)
         {
+            if (!Directory.Exists(sourceDir)) return;
             foreach (var dir in Directory.GetDirectories(sourceDir, "*", SearchOption.AllDirectories))
             {
                 var relativePath = Path.GetRelativePath(sourceDir, dir);
-                zipArchive.CreateEntry(Path.Combine(entryName, relativePath) + "/");
+                
+                // if the directory is empty, add an empty entry
+                if (!Directory.EnumerateFileSystemEntries(dir).Any())
+                {
+                    archive.AddEntry(Path.Combine(entryPrefix, relativePath) + "/", null);
+                }
             }
 
             foreach (var file in Directory.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories))
             {
                 var relativePath = Path.GetRelativePath(sourceDir, file);
-                AddFileToZip(zipArchive, file, Path.Combine(entryName, relativePath), progressCallback);
+                AddFileToAr(archive, file, Path.Combine(entryPrefix, relativePath), progressCallback);
             }
         }
 
-        private static void AddFileToZip(ZipArchive zipArchive, string filePath, string entryName, Action<string, long>? progressCallback = null)
+        private static void AddFileToAr(IArchive archive, string filePath, string entryName, Action<string, long>? progressCallback = null)
         {
-            var entry = zipArchive.CreateEntry(entryName);
-            using (var entryStream = entry.Open())
             using (var fileStream = File.OpenRead(filePath))
             {
-                var buffer = new byte[81920];
+                var entryStream = archive.CreateEntry(entryName, fileStream.Length);
+
+                var buffer = new byte[65536];
                 int bytesRead;
                 while ((bytesRead = fileStream.Read(buffer, 0, buffer.Length)) > 0)
                 {
                     entryStream.Write(buffer, 0, bytesRead);
                     progressCallback?.Invoke($"Backing up: {Path.GetFileName(filePath)}", bytesRead);
                 }
+                entryStream.Close();
             }
         }
     }
