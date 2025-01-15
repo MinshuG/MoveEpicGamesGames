@@ -14,7 +14,7 @@ Epic Games Manager is designed to help you manage your EGL Games because it can'
 
 - **Backup Games**: Create compressed backups of your installed games.
   - Support for ZIP compression (.epiczip).
-  - Support for LZ4 compression (.epiclz4).
+  <!-- - Support for LZ4 compression (.epiclz4). -->
   - Backup includes all necessary game files.
 
 - **Restore Backups**: Easily restore game backups.
@@ -88,4 +88,4 @@ Epic Games Manager is designed to help you manage your EGL Games because it can'
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE.md) file for details.
